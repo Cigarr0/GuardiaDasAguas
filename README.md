@@ -56,10 +56,10 @@ Trata-se de um projeto da equipe filhos de Iara composta por Júlio Gabriel, Cai
 - ![Lilás](https://img.shields.io/badge/-%23dedae07.svg?style=flat&color=dedae0) - #dedae0
 
 3. ✏️Fonte da logo:
-- montaser arabic
+- Montaser arabic - Mohammed Jaber
 
 4. ✏️Fonte do Material
-- glacial indifference (bold)
+- Glacial indifference (bold) - Alfredo Marco Pradil
 
 ## 🚧Descrição do projeto
 
