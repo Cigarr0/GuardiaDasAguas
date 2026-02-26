@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Como nascem as guardiãs - Jogo</title>
     <link rel="stylesheet" href="style.css">
-
     <script type="importmap">
         {
             "imports": {
@@ -17,7 +16,6 @@
 </head>
 <body>
     <div vw class="enabled"><div vw-access-button class="active"></div><div vw-plugin-wrapper></div></div>
-
     <header>
         <nav class="nav-container">
             <div class="logo">Guardiãs</div>
@@ -31,163 +29,112 @@
             </ul>
         </nav>
     </header>
-
     <main>
         <section class="hero-brand reveal">
             <h1 class="main-title">Como nascem as guardiãs</h1>
             <h2 class="sub-title">Explore e proteja o nosso minimundo</h2>
         </section>
-
         <section class="container reveal" style="padding-top: 0;">
-            <div id="game-canvas-container" style="position: relative; width: 100%; height: 60vh; overflow: hidden; border-radius: 12px; background-color: #f0f0f0;">
+            <div id="game-canvas-container" style="position: relative; width: 100%; height: 60vh; overflow: hidden; border-radius: 12px; background-color: #000;">
                 <div id="game-loading-overlay" class="game-loading-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: white; z-index: 10;">
-                    <button id="btn-comecar" style="padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 8px; background-color: #4a148c; color: white; border: none; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Começar Experiência</button>
+                    <button id="btn-comecar" style="padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 8px; background-color: #4a148c; color: white; border: none; font-weight: bold; transition: 0.3s;">Começar Experiência</button>
                 </div>
             </div>
         </section>
     </main>
-
     <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
     <script src="script.js"></script>
-
     <script type="module">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
-        const btnComecar = document.getElementById('btn-comecar');
-        const overlay = document.getElementById('game-loading-overlay');
         const container = document.getElementById('game-canvas-container');
-
+        const btnComecar = document.getElementById('btn-comecar');
         btnComecar.addEventListener('click', () => {
-            overlay.style.display = 'none';
+            document.getElementById('game-loading-overlay').style.display = 'none';
             iniciarJogo();
         });
-
         function iniciarJogo() {
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87CEEB);
-            
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-
-            const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-            
+            const camera = new THREE.PerspectiveCamera(10, container.clientWidth / container.clientHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(width, height);
+            renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
-
-            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-            dirLight.position.set(20, 40, 20);
-            scene.add(dirLight);
-
+            scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+            const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+            sun.position.set(5, 10, 5);
+            scene.add(sun);
+            const raycaster = new THREE.Raycaster();
+            let mapaMeshes = [];
+            let mapaCarregado = false;
             const loader = new GLTFLoader();
-            const mapaGrupo = new THREE.Group();
-            scene.add(mapaGrupo);
-
             loader.load('Modelos/mapa.glb', (gltf) => {
-                mapaGrupo.add(gltf.scene);
+                scene.add(gltf.scene);
+                gltf.scene.traverse(child => { if (child.isMesh) mapaMeshes.push(child); });
+                mapaCarregado = true;
             });
-
-            let mixer, jogador;
-            let acaoIdle, acaoWalk;
-            const clock = new THREE.Clock();
-            
-            const raioPlaneta = 0; 
-            let velocidadeVertical = 0;
-            const gravidade = 0.005;
-
+            let jogador, mixer, currentAction = 'Idle';
+            const animationsMap = new Map();
+            const keysPressed = {};
             loader.load('Modelos/Player.gltf', (gltf) => {
                 jogador = gltf.scene;
-                jogador.scale.set(0.15, 0.15, 0.15); 
-                jogador.position.set(1, raioPlaneta + 4, 0); 
-                jogador.rotation.y = Math.PI; 
-
+                jogador.scale.set(0.15, 0.15, 0.15);
                 scene.add(jogador);
-
                 mixer = new THREE.AnimationMixer(jogador);
-                const animacoes = gltf.animations;
-                if (animacoes.length > 0) {
-                    acaoIdle = mixer.clipAction(animacoes[0]); 
-                    acaoWalk = mixer.clipAction(animacoes.length > 1 ? animacoes[1] : animacoes[0]);
-                    acaoIdle.play();
-                }
+                gltf.animations.forEach(clip => {
+                    const name = clip.name.toLowerCase();
+                    const action = mixer.clipAction(clip);
+                    if (name.includes('idle')) animationsMap.set('Idle', action);
+                    else if (name.includes('run')) animationsMap.set('Run', action);
+                    else if (name.includes('walk')) animationsMap.set('Walk', action);
+                });
+                animationsMap.get('Idle')?.play();
             });
-
-            const teclas = { w: false, a: false, s: false, d: false, arrowup: false, arrowdown: false, arrowleft: false, arrowright: false };
-            let andando = false;
-
-            window.addEventListener('keydown', (e) => {
-                const tecla = e.key.toLowerCase();
-                if (teclas.hasOwnProperty(tecla)) teclas[tecla] = true;
-                
-                if (!andando && (teclas.w || teclas.s || teclas.a || teclas.d || teclas.arrowup || teclas.arrowdown || teclas.arrowleft || teclas.arrowright)) {
-                    andando = true;
-                    if(acaoIdle && acaoWalk) {
-                        acaoIdle.crossFadeTo(acaoWalk, 0.2, true);
-                        acaoWalk.play();
-                    }
-                }
-            });
-
-            window.addEventListener('keyup', (e) => {
-                const tecla = e.key.toLowerCase();
-                if (teclas.hasOwnProperty(tecla)) teclas[tecla] = false;
-                const algumaPressionada = Object.values(teclas).some(v => v);
-                if (andando && !algumaPressionada) {
-                    andando = false;
-                    if(acaoIdle && acaoWalk) {
-                        acaoWalk.crossFadeTo(acaoIdle, 0.2, true);
-                        acaoIdle.play();
-                    }
-                }
-            });
-
-            function aplicarFisica() {
-                if (!jogador) return;
-
-                let distanciaCentro = jogador.position.length();
-
-                if (distanciaCentro > raioPlaneta) {
-                    velocidadeVertical -= gravidade;
-                } else {
-                    velocidadeVertical = 0;
-                    jogador.position.normalize().multiplyScalar(raioPlaneta);
-                }
-
-                let direcaoRaios = jogador.position.clone().normalize();
-                jogador.position.add(direcaoRaios.multiplyScalar(velocidadeVertical));
-            }
-
-            function animate() {
-                requestAnimationFrame(animate);
+            window.addEventListener('keydown', (e) => keysPressed[e.key.toLowerCase()] = true);
+            window.addEventListener('keyup', (e) => keysPressed[e.key.toLowerCase()] = false);
+            const clock = new THREE.Clock();
+            const upVec = new THREE.Vector3(0, 1, 0);
+            function update() {
+                requestAnimationFrame(update);
                 const delta = clock.getDelta();
-                if (mixer) mixer.update(delta);
-
-                if (jogador) {
-                    if (teclas.a || teclas.arrowleft) jogador.rotation.y += 0.05;
-                    if (teclas.d || teclas.arrowright) jogador.rotation.y -= 0.05;
-
-                    const velMundo = 0.02;
-                    
-                    if (teclas.w || teclas.arrowup) {
-                        mapaGrupo.rotation.x += Math.cos(jogador.rotation.y) * velMundo;
-                        mapaGrupo.rotation.z += Math.sin(jogador.rotation.y) * velMundo;
-                    }
-                    if (teclas.s || teclas.arrowdown) {
-                        mapaGrupo.rotation.x -= Math.cos(jogador.rotation.y) * velMundo;
-                        mapaGrupo.rotation.z -= Math.sin(jogador.rotation.y) * velMundo;
-                    }
-
-                    aplicarFisica();
-
-                    camera.position.set(0, raioPlaneta + 2, 5); 
-                    camera.lookAt(0, raioPlaneta, 0);
+                if (!jogador || !mapaCarregado) return;
+                const directionPressed = ['w', 'a', 's', 'd'].some(k => keysPressed[k]);
+                const isRunning = keysPressed['shift'];
+                let play = directionPressed ? (isRunning ? 'Run' : 'Walk') : 'Idle';
+                if (currentAction !== play) {
+                    animationsMap.get(currentAction)?.fadeOut(0.2);
+                    animationsMap.get(play)?.reset().fadeIn(0.2).play();
+                    currentAction = play;
                 }
-
+                mixer.update(delta);
+                let moveX = 0;
+                let moveZ = 0;
+                if (keysPressed['w']) moveZ -= 1;
+                if (keysPressed['s']) moveZ += 1;
+                if (keysPressed['a']) moveX -= 1;
+                if (keysPressed['d']) moveX += 1;
+                if (directionPressed) {
+                    const moveDir = new THREE.Vector3(moveX, 0, moveZ).normalize();
+                    const vel = isRunning ? 4.5 : 2.0;
+                    const nextPos = jogador.position.clone().addScaledVector(moveDir, vel * delta);
+                    raycaster.set(new THREE.Vector3(nextPos.x, 10, nextPos.z), new THREE.Vector3(0, -1, 0));
+                    const intersects = raycaster.intersectObjects(mapaMeshes, true);
+                    if (intersects.length > 0) {
+                        jogador.position.copy(nextPos);
+                        jogador.position.y = intersects[0].point.y;
+                        const normal = intersects[0].face.normal.clone().applyQuaternion(intersects[0].object.quaternion);
+                        const targetQuat = new THREE.Quaternion().setFromUnitVectors(upVec, normal);
+                        const angle = Math.atan2(moveDir.x, moveDir.z);
+                        const rotationQuat = new THREE.Quaternion().setFromAxisAngle(upVec, angle);
+                        jogador.quaternion.slerp(targetQuat.multiply(rotationQuat), 0.15);
+                    }
+                }
+                const camOffset = new THREE.Vector3(0, 4.5, 16); 
+                camera.position.lerp(jogador.position.clone().add(camOffset), 0.1);
+                camera.lookAt(jogador.position.x, jogador.position.y + 0.8, jogador.position.z);
                 renderer.render(scene, camera);
             }
-            animate();
+            update();
         }
     </script>
 </body>
