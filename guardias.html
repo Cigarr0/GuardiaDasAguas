@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Como nascem as guardiãs - Jogo</title>
     <link rel="stylesheet" href="style.css">
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
     <div vw class="enabled"><div vw-access-button class="active"></div><div vw-plugin-wrapper></div></div>
@@ -30,41 +39,156 @@
         </section>
 
         <section class="container reveal" style="padding-top: 0;">
-            <div id="game-canvas-container">
-                <div class="game-loading-overlay">
-                    <p>Carregando Experiência Interativa...</p>
+            <div id="game-canvas-container" style="position: relative; width: 100%; height: 60vh; overflow: hidden; border-radius: 12px; background-color: #f0f0f0;">
+                <div id="game-loading-overlay" class="game-loading-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: white; z-index: 10;">
+                    <button id="btn-comecar" style="padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 8px; background-color: #4a148c; color: white; border: none; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Começar Experiência</button>
                 </div>
-            </div>
-
-            <div class="mvw-grid" style="margin-top: 30px;">
-                <div class="mvw-card">
-                    <h3>Objetivo</h3>
-                    <p>Caminhe pelas cidades e colete resíduos para evoluir sua personagem.</p>
-                </div>
-                <div class="mvw-card">
-                    <h3>Controles</h3>
-                    <p>Utilize as teclas <strong>WASD</strong> ou as <strong>Setas</strong> para se movimentar.</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="container reveal">
-            <div class="content-block">
-                <h2>Equipe Filhos de Iara</h2>
-                <p class="team-names">Júlio Gabriel • Caio Henrik • Mellany Rosa</p>
             </div>
         </section>
     </main>
 
-    <footer class="main-footer">
-        <div class="footer-content">
-            <h3>Guardiãs das Águas</h3>
-            <p>&copy; 2026 Guardiãs das Águas. Todos os direitos reservados.</p>
-        </div>
-    </footer>
-
     <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
     <script src="script.js"></script>
-</body>
 
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const btnComecar = document.getElementById('btn-comecar');
+        const overlay = document.getElementById('game-loading-overlay');
+        const container = document.getElementById('game-canvas-container');
+
+        btnComecar.addEventListener('click', () => {
+            overlay.style.display = 'none';
+            iniciarJogo();
+        });
+
+        function iniciarJogo() {
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+            
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(20, 40, 20);
+            scene.add(dirLight);
+
+            const loader = new GLTFLoader();
+            const mapaGrupo = new THREE.Group();
+            scene.add(mapaGrupo);
+
+            loader.load('Modelos/mapa.glb', (gltf) => {
+                mapaGrupo.add(gltf.scene);
+            });
+
+            let mixer, jogador;
+            let acaoIdle, acaoWalk;
+            const clock = new THREE.Clock();
+            
+            const raioPlaneta = 0; 
+            let velocidadeVertical = 0;
+            const gravidade = 0.005;
+
+            loader.load('Modelos/Player.gltf', (gltf) => {
+                jogador = gltf.scene;
+                jogador.scale.set(0.15, 0.15, 0.15); 
+                jogador.position.set(1, raioPlaneta + 4, 0); 
+                jogador.rotation.y = Math.PI; 
+
+                scene.add(jogador);
+
+                mixer = new THREE.AnimationMixer(jogador);
+                const animacoes = gltf.animations;
+                if (animacoes.length > 0) {
+                    acaoIdle = mixer.clipAction(animacoes[0]); 
+                    acaoWalk = mixer.clipAction(animacoes.length > 1 ? animacoes[1] : animacoes[0]);
+                    acaoIdle.play();
+                }
+            });
+
+            const teclas = { w: false, a: false, s: false, d: false, arrowup: false, arrowdown: false, arrowleft: false, arrowright: false };
+            let andando = false;
+
+            window.addEventListener('keydown', (e) => {
+                const tecla = e.key.toLowerCase();
+                if (teclas.hasOwnProperty(tecla)) teclas[tecla] = true;
+                
+                if (!andando && (teclas.w || teclas.s || teclas.a || teclas.d || teclas.arrowup || teclas.arrowdown || teclas.arrowleft || teclas.arrowright)) {
+                    andando = true;
+                    if(acaoIdle && acaoWalk) {
+                        acaoIdle.crossFadeTo(acaoWalk, 0.2, true);
+                        acaoWalk.play();
+                    }
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const tecla = e.key.toLowerCase();
+                if (teclas.hasOwnProperty(tecla)) teclas[tecla] = false;
+                const algumaPressionada = Object.values(teclas).some(v => v);
+                if (andando && !algumaPressionada) {
+                    andando = false;
+                    if(acaoIdle && acaoWalk) {
+                        acaoWalk.crossFadeTo(acaoIdle, 0.2, true);
+                        acaoIdle.play();
+                    }
+                }
+            });
+
+            function aplicarFisica() {
+                if (!jogador) return;
+
+                let distanciaCentro = jogador.position.length();
+
+                if (distanciaCentro > raioPlaneta) {
+                    velocidadeVertical -= gravidade;
+                } else {
+                    velocidadeVertical = 0;
+                    jogador.position.normalize().multiplyScalar(raioPlaneta);
+                }
+
+                let direcaoRaios = jogador.position.clone().normalize();
+                jogador.position.add(direcaoRaios.multiplyScalar(velocidadeVertical));
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const delta = clock.getDelta();
+                if (mixer) mixer.update(delta);
+
+                if (jogador) {
+                    if (teclas.a || teclas.arrowleft) jogador.rotation.y += 0.05;
+                    if (teclas.d || teclas.arrowright) jogador.rotation.y -= 0.05;
+
+                    const velMundo = 0.02;
+                    
+                    if (teclas.w || teclas.arrowup) {
+                        mapaGrupo.rotation.x += Math.cos(jogador.rotation.y) * velMundo;
+                        mapaGrupo.rotation.z += Math.sin(jogador.rotation.y) * velMundo;
+                    }
+                    if (teclas.s || teclas.arrowdown) {
+                        mapaGrupo.rotation.x -= Math.cos(jogador.rotation.y) * velMundo;
+                        mapaGrupo.rotation.z -= Math.sin(jogador.rotation.y) * velMundo;
+                    }
+
+                    aplicarFisica();
+
+                    camera.position.set(0, raioPlaneta + 2, 5); 
+                    camera.lookAt(0, raioPlaneta, 0);
+                }
+
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+    </script>
+</body>
 </html>
