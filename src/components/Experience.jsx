@@ -7,8 +7,8 @@ import { Map } from "./Map";
 
 const maps = {
   castle_on_hills: {
-    scale: 3,
-    position: [-6, -7, 0],
+    scale: 1,
+    position: [0, -5, 0],
   },
   animal_crossing_map: {
     scale: 20,
