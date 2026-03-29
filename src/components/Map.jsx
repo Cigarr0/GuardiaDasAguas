@@ -5,8 +5,12 @@ import { useEffect, useRef } from "react";
 export const Map = ({ model, ...props }) => {
   const { scene, animations } = useGLTF(model);
   const group = useRef();
+  
+  // Ligamos as animações à referência do grupo que envolve a cena
   const { actions } = useAnimations(animations, group);
+
   useEffect(() => {
+    // Garante que o cenário projeta e recebe sombras
     scene.traverse((child) => {
       if (child.isMesh) {
         child.castShadow = true;
@@ -16,15 +20,21 @@ export const Map = ({ model, ...props }) => {
   }, [scene]);
 
   useEffect(() => {
-    if (actions && animations.length > 0) {
-      actions[animations[0].name].play();
+    if (actions) {
+      console.log("Animações detectadas no mapa:", Object.keys(actions)); // Debug para ver no console do navegador
+      
+      // Tenta dar play em absolutamente todas as tracks encontradas
+      Object.keys(actions).forEach((key) => {
+        actions[key].reset().play();
+      });
     }
   }, [actions]);
 
   return (
-    <group>
+    <group ref={group}> 
       <RigidBody type="fixed" colliders="trimesh">
-        <primitive object={scene} {...props} ref={group} />
+        {/* Passamos as props (position/scale) para o primitive */}
+        <primitive object={scene} {...props} />
       </RigidBody>
     </group>
   );

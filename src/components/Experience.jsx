@@ -6,9 +6,14 @@ import { CharacterController } from "./CharacterController";
 import { Map } from "./Map";
 
 const maps = {
+  teste1: {
+    scale: 3,
+    position: [-6, -7, 0],
+
+  },
   castle_on_hills: {
-    scale: 1,
-    position: [0, -5, 0],
+    scale: 3,
+    position: [-6, -7, 0],
   },
   animal_crossing_map: {
     scale: 20,

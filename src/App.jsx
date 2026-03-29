@@ -1,29 +1,53 @@
-import { KeyboardControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { Experience } from "./components/Experience";
-
-const keyboardMap = [
-  { name: "forward", keys: ["ArrowUp", "KeyW"] },
-  { name: "backward", keys: ["ArrowDown", "KeyS"] },
-  { name: "left", keys: ["ArrowLeft", "KeyA"] },
-  { name: "right", keys: ["ArrowRight", "KeyD"] },
-  { name: "run", keys: ["Shift"] },
-];
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Header } from "./components/layout/Header";
+import { Home } from "./pages/Home";
+import { GamePage } from "./pages/GamePage";
 
 function App() {
+  useEffect(() => {
+    // 1. Lógica do Dark Mode (do seu script.js)
+    const themeBtn = document.getElementById('theme-toggle');
+    if (localStorage.getItem('theme') === 'dark') {
+      document.body.classList.add('dark-mode');
+      if (themeBtn) themeBtn.textContent = '☀️';
+    }
+
+    const handleTheme = () => {
+      document.body.classList.toggle('dark-mode');
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      if (themeBtn) themeBtn.textContent = isDark ? '☀️' : '🌙';
+    };
+
+    themeBtn?.addEventListener('click', handleTheme);
+
+    // 2. Animação ao Rolar (Reveal)
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('active');
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    return () => themeBtn?.removeEventListener('click', handleTheme);
+  }, []);
+
   return (
-    <KeyboardControls map={keyboardMap}>
-      <Canvas
-        shadows
-        camera={{ position: [3, 3, 3], near: 0.1, fov: 40 }}
-        style={{
-          touchAction: "none",
-        }}
-      >
-        <color attach="background" args={["#ececec"]} />
-        <Experience />
-      </Canvas>
-    </KeyboardControls>
+    <BrowserRouter>
+      <Header />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/jogar" element={<GamePage />} />
+      </Routes>
+      <footer className="main-footer">
+        <div className="footer-content">
+          <h3>Guardiãs das Águas</h3>
+          <p>&copy; 2026 Guardiãs das Águas. Todos os direitos reservados.</p>
+        </div>
+      </footer>
+    </BrowserRouter>
   );
 }
 
