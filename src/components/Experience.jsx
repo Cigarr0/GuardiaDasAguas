@@ -110,7 +110,7 @@ export const Experience = () => {
         <Npc 
          scale={0}
           model={`models/Npc/Maria.glb`}
-          position={[0.0, -0.5, 0.50]} 
+          position={[0.0, -0.5, 1]} 
           rotation={[0, Math.PI, 0]} 
         />
 
