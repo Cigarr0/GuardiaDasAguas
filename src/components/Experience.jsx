@@ -108,9 +108,9 @@ export const Experience = () => {
         {/* Adicionando a NPC no mapa */}
         {/* Ajuste o position [X, Y, Z] conforme necessário para brotar no lugar certo */}
         <Npc 
-          scale={0.42}
+         scale={0}
           model={`models/Npc/Maria.glb`}
-          position={[0, -5.5, 1]} 
+          position={[0.0, -0.5, 0.50]} 
           rotation={[0, Math.PI, 0]} 
         />
 
