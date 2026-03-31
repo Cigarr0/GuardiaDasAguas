@@ -1,15 +1,33 @@
-import { Environment, OrthographicCamera } from "@react-three/drei";
-import { Physics } from "@react-three/rapier";
+import { Environment, OrthographicCamera, useGLTF } from "@react-three/drei";
+import { Physics, RigidBody, CylinderCollider } from "@react-three/rapier";
 import { useControls } from "leva";
 import { useEffect, useRef, useState } from "react";
 import { CharacterController } from "./CharacterController";
 import { Map } from "./Map";
 
+// Componente do NPC
+const Npc = ({ model, position, rotation = [0, 0, 0] }) => {
+  const { scene } = useGLTF(model);
+  
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Corpo rígido fixo para colisão com a personagem */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <primitive object={scene} />
+      </RigidBody>
+
+      {/* Sensor de proximidade (invisível) para detectar o jogador futuramente */}
+      <RigidBody sensor type="fixed">
+        <CylinderCollider args={[1.5, 2]} /> 
+      </RigidBody>
+    </group>
+  );
+};
+
 export const Experience = () => {
   const shadowCameraRef = useRef();
   const [showMenu, setShowMenu] = useState(false);
 
-  // Lógica para detetar o TAB
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Tab") {
@@ -31,7 +49,6 @@ export const Experience = () => {
     };
   }, []);
 
-  // Menu Leva: Apenas o mapa de teste, escondido por padrão
   const { map } = useControls("Menu de Jogo", {
     map: {
       value: "teste1",
@@ -41,7 +58,6 @@ export const Experience = () => {
 
   return (
     <>
-      {/* CSS para forçar o Leva a ser um menu Fullscreen centralizado quando visível */}
       {showMenu && (
         <style>
           {`
@@ -56,8 +72,9 @@ export const Experience = () => {
               justify-content: center !important;
               background: rgba(0, 0, 0, 0.8) !important;
               backdrop-filter: blur(5px);
+              z-index: 1000;
             }
-            .leva-c-hSxeHe { width: 400px !important; } /* Tamanho da caixa do menu */
+            .leva-c-hSxeHe { width: 400px !important; }
           `}
         </style>
       )}
@@ -82,12 +99,21 @@ export const Experience = () => {
       </directionalLight>
 
       <Physics key={map}>
-        {/* Apenas o mapa teste1 com os seus valores originais */}
         <Map
           scale={3}
           position={[-1, -6, 0.5]}
           model={`models/teste1.glb`}
         />
+
+        {/* Adicionando a NPC no mapa */}
+        {/* Ajuste o position [X, Y, Z] conforme necessário para brotar no lugar certo */}
+        <Npc 
+          scale={0.42}
+          model={`models/Npc/Maria.glb`}
+          position={[0, -5.5, 1]} 
+          rotation={[0, Math.PI, 0]} 
+        />
+
         <CharacterController />
       </Physics>
     </>
